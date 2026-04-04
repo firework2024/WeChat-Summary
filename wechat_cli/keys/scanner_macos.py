@@ -2,23 +2,12 @@
 
 import os
 import platform
+import plistlib
 import subprocess
 import sys
 import tempfile
 
 from .common import collect_db_files, cross_verify_keys, save_results, scan_memory_for_keys
-
-# Entitlements needed for task_for_pid to work on WeChat
-_ENTITLEMENTS_XML = """\
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>com.apple.security.get-task-allow</key>
-    <true/>
-</dict>
-</plist>
-"""
 
 
 def _find_binary():
@@ -52,8 +41,34 @@ def _find_binary():
     )
 
 
+def _get_original_entitlements(app_path):
+    """提取 app 当前的签名 entitlements，返回 dict 或 None。"""
+    try:
+        result = subprocess.run(
+            ["codesign", "-d", "--entitlements", ":-", app_path],
+            capture_output=True,
+            timeout=15,
+        )
+        if result.returncode == 0 and result.stdout:
+            return plistlib.loads(result.stdout)
+    except Exception:
+        pass
+    return None
+
+
+def _build_entitlements_xml(app_path):
+    """构建 entitlements：保留原有权限 + 添加 get-task-allow。"""
+    entitlements = _get_original_entitlements(app_path)
+    if entitlements is None:
+        entitlements = {}
+
+    entitlements["com.apple.security.get-task-allow"] = True
+
+    return plistlib.dumps(entitlements, fmt=plistlib.FMT_XML)
+
+
 def _resign_wechat():
-    """Re-sign WeChat with get-task-allow entitlement so task_for_pid works."""
+    """Re-sign WeChat: 保留原有 entitlements，仅添加 get-task-allow。"""
     wechat_paths = [
         "/Applications/WeChat.app",
         os.path.expanduser("~/Applications/WeChat.app"),
@@ -67,14 +82,19 @@ def _resign_wechat():
     if wechat_app is None:
         return False, "未找到 WeChat.app（已搜索 /Applications 和 ~/Applications）"
 
-    # Write entitlements to temp file
-    ent_fd, ent_path = tempfile.mkstemp(suffix=".xml")
-    try:
-        with os.fdopen(ent_fd, "w") as f:
-            f.write(_ENTITLEMENTS_XML)
+    print(f"\n[*] 检测到 task_for_pid 权限不足，正在对微信重新签名...")
+    print(f"    目标: {wechat_app}")
 
-        print(f"\n[*] 检测到 task_for_pid 权限不足，正在对微信重新签名...")
-        print(f"    目标: {wechat_app}")
+    # 提取并合并 entitlements
+    try:
+        ent_data = _build_entitlements_xml(wechat_app)
+    except Exception as e:
+        return False, f"提取微信原始权限失败: {e}"
+
+    ent_fd, ent_path = tempfile.mkstemp(suffix=".plist")
+    try:
+        with os.fdopen(ent_fd, "wb") as f:
+            f.write(ent_data)
 
         result = subprocess.run(
             ["codesign", "--force", "--sign", "-", "--entitlements", ent_path, wechat_app],
@@ -88,7 +108,9 @@ def _resign_wechat():
     if result.returncode != 0:
         return False, f"codesign 失败: {result.stderr.strip()}"
 
-    print("[+] 签名完成！请重新启动微信后再执行 init。")
+    print("[+] 签名完成（已保留微信原有权限，仅添加调试访问权限）。")
+    print("[+] 请重新启动微信后再执行 init。")
+    print("[!] 注意：如果微信自动更新，可能需要重新签名。")
     return True, None
 
 
@@ -145,23 +167,29 @@ def extract_keys(db_dir, output_path, pid=None):
     combined_output = (result.stdout or "") + (result.stderr or "")
     if "task_for_pid" in combined_output:
         print("\n[!] task_for_pid 失败：macOS 安全策略阻止了进程内存访问。")
-        print("[!] 需要对微信重新签名以允许调试访问。")
+        print("[!] 需要对微信重新签名以允许调试访问（不影响微信正常功能）。")
 
         ok, err = _resign_wechat()
         if ok:
             raise RuntimeError(
-                "已对微信重新签名。请执行以下步骤后重试：\n"
+                "已对微信重新签名（保留原有权限）。请执行以下步骤后重试：\n"
                 "  1. 退出微信（完全退出，不是最小化）\n"
                 "  2. 重新打开微信并登录\n"
                 "  3. 再次执行: sudo wechat-cli init"
             )
         else:
+            # 手动命令也需要保留原有权限
             raise RuntimeError(
                 f"自动签名失败: {err}\n"
                 "请手动执行以下命令后重试：\n"
-                '  codesign --force --sign - --entitlements /dev/stdin /Applications/WeChat.app <<\'EOF\'\n'
-                + _ENTITLEMENTS_XML +
-                "EOF\n"
+                "  # 1. 提取微信原有权限\n"
+                "  codesign -d --entitlements wechat_ent.plist /Applications/WeChat.app\n"
+                "  # 2. 用 PlistBuddy 添加 get-task-allow\n"
+                '  /usr/libexec/PlistBuddy -c "Add :com.apple.security.get-task-allow bool true" wechat_ent.plist\n'
+                "  # 3. 重新签名\n"
+                "  codesign --force --sign - --entitlements wechat_ent.plist /Applications/WeChat.app\n"
+                "  # 4. 清理\n"
+                "  rm wechat_ent.plist\n"
                 "然后重启微信，再执行: sudo wechat-cli init"
             )
 

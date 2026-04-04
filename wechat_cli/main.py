@@ -6,7 +6,7 @@ import click
 
 from .core.context import AppContext
 
-_VERSION = "0.2.2"
+_VERSION = "0.2.3"
 
 
 @click.group()
