@@ -19,14 +19,24 @@ A command-line tool to query your local WeChat data — chat history, contacts, 
 
 ### Install
 
+**Via pip (requires Python >= 3.10):**
+
 ```bash
 pip install wechat-cli
 ```
 
+**Via npm (standalone binary, no Python needed):**
+
+```bash
+npm install -g @canghe_ai/wechat-cli
+```
+
+> Currently only **macOS arm64** binary is available. Other platforms (macOS Intel, Linux, Windows) can use the pip install method. PRs with additional platform binaries are welcome.
+
 Or install from source:
 
 ```bash
-git clone https://github.com/canghe/wechat-cli.git
+git clone https://github.com/freestylefly/wechat-cli.git
 cd wechat-cli
 pip install -e .
 ```

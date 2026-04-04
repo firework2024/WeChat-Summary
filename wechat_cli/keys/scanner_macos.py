@@ -18,9 +18,18 @@ def _find_binary():
     else:
         raise RuntimeError(f"不支持的 macOS 架构: {machine}")
 
-    # 优先查找 bin/ 目录（pip 安装后位于包内）
-    pkg_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    bin_path = os.path.join(pkg_dir, "bin", name)
+    # PyInstaller 运行时：从临时解压目录查找
+    if getattr(sys, 'frozen', False):
+        base = sys._MEIPASS
+    else:
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    bin_path = os.path.join(base, "wechat_cli", "bin", name)
+    if os.path.isfile(bin_path):
+        return bin_path
+
+    # fallback: 直接在 bin/ 下
+    bin_path = os.path.join(base, "bin", name)
     if os.path.isfile(bin_path):
         return bin_path
 

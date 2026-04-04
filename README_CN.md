@@ -19,14 +19,24 @@
 
 ### 安装
 
+**通过 pip（需要 Python >= 3.10）：**
+
 ```bash
 pip install wechat-cli
 ```
 
+**通过 npm（独立二进制，无需 Python）：**
+
+```bash
+npm install -g @canghe_ai/wechat-cli
+```
+
+> 目前仅提供 **macOS arm64** 二进制。其他平台（macOS Intel、Linux、Windows）可使用 pip 安装。欢迎提交其他平台的二进制 PR。
+
 或从源码安装：
 
 ```bash
-git clone https://github.com/canghe/wechat-cli.git
+git clone https://github.com/freestylefly/wechat-cli.git
 cd wechat-cli
 pip install -e .
 ```
