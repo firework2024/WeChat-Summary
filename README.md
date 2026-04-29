@@ -74,9 +74,7 @@ summary/pictures/2.png
 summary/pictures/11.png
 ```
 
-如果你没有自己的背景图，也可以先放任意 11 张图片测试。建议图片比例接近手机竖屏，例如 `750 x 1206`。
-
-如果你不想上传背景图，可以把 `summary/pictures/` 留空，让使用者自己准备图片。
+如果你没有自己的背景图，也可以使用目前的默认背景图。
 
 ## 第三步：生成总结页面
 
@@ -240,27 +238,6 @@ git add .
 
 不会把它们加进去。不要使用 `git add -f` 强行添加这些文件。
 
-## 推荐上传到 GitHub 的文件
-
-建议上传：
-
-```text
-scripts/build_summary_page.py
-scripts/check_summary_feasibility.py
-summary/summary.txt
-summary/styles.css
-summary/app.js
-README.md
-LICENSE
-```
-
-如果背景图没有隐私和版权问题，也可以上传：
-
-```text
-summary/pictures/
-```
-
-不建议上传任何已经生成好的个人总结页面。
 
 ## 项目来源与致谢
 
