@@ -33,11 +33,25 @@ Thumbs.db
 *.db
 *.db-wal
 *.db-shm
+analysis/
+summary/index.html
+summary/summary_filled.txt
+summary/summary_data.json
+summary/feasibility/
+summary/**/*.csv
+summary/**/*.json
+summary/**/*.md
+scripts/__pycache__/
 
 # Sensitive data — NEVER commit
 *.json
 !pyproject.toml
 !npm/**/package.json
+contacts.json
+sessions.json
+week_group_*.json
+one_stats.json
+epilepsy_*.json
 
 # Temp files
 *.tmp

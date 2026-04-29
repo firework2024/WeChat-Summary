@@ -1,382 +1,281 @@
-<div align="center">
+# WeChat Summary
 
-# WeChat CLI
+一个基于本机微信数据生成「微信 1-4 月总结」页面的小工具。
 
-**Query your local WeChat data from the command line.**
+本项目基于 [huohuoer/wechat-cli](https://github.com/huohuoer/wechat-cli) 开发，使用它提供的本地微信数据库读取、解密和联系人解析能力，在用户自己的电脑上生成一份 11 页的 HTML 总结页。
 
-[![npm version](https://img.shields.io/npm/v/@canghe_ai/wechat-cli.svg)](https://www.npmjs.com/package/@canghe_ai/wechat-cli)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](https://github.com/freestylefly/wechat-cli)
+整个过程只读取本机数据，不需要上传聊天记录，也不会把微信数据发送到服务器，所有计算都在本地进行，无需担心隐私泄露。
 
-Chat history · Contacts · Sessions · Favorites · Statistics · Export
+请不要对本项目进行违法或违反微信操作规则的改造。
 
-[中文文档](README_CN.md)
+## 能生成什么
 
-</div>
+运行后会生成一个本地 HTML 页面，内容包括：
 
----
+- 1-4 月本人发送消息总量、私聊/群聊数量
+- 私聊互动最多的人、主动开启会话次数、最长连续发送
+- 新出现的私聊对象和群聊
+- 情绪词、笑声、常用关键词
+- 群聊活跃排行和活跃时间段
+- 朋友圈发布数、互动数、最多点赞动态、点赞最多的人
+- 拍一拍、图片、语音、视频、表情等消息类型统计
 
-## ✨ Highlights
+页面模板在 `summary/summary.txt`，样式在 `summary/styles.css`，交互在 `summary/app.js`。
 
-- **🚀 Zero-config install** — `npm install -g` and you're done, no Python needed
-- **📦 11 commands** — sessions, history, search, contacts, members, stats, export, favorites, unread, new-messages, init
-- **🤖 AI-first** — JSON output by default, designed for LLM agent tool calls
-- **🔒 Fully local** — on-the-fly SQLCipher decryption, data never leaves your machine
-- **📊 Rich analytics** — top senders, message type breakdown, 24-hour activity charts
-- **📝 Flexible export** — Markdown or plain text, with time range filtering
+## 运行前准备
 
----
+你需要：
 
-## 📥 Installation (For Humans)
+- Windows / macOS / Linux
+- Python 3.10 或更高版本
+- 本机已登录微信
+- 能正常访问本机微信数据目录
 
-AI Agents — skip ahead to "Installation (For AI Agents)" below.
+推荐先创建虚拟环境：
 
-### npm (Recommended)
-
-```bash
-npm install -g @canghe_ai/wechat-cli
-```
-
-> Currently ships a **macOS arm64** binary. Other platforms can use the pip method below. PRs with additional platform binaries are welcome.
-
-**Update to the latest version:**
-
-```bash
-npm update -g @canghe_ai/wechat-cli
-```
-
-### pip
-
-```bash
-pip install wechat-cli
-```
-
-Requires Python >= 3.10.
-
-### From Source
-
-```bash
-git clone https://github.com/freestylefly/wechat-cli.git
-cd wechat-cli
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -U pip
 pip install -e .
 ```
 
----
-
-## 📥 Installation (For AI Agents)
-
-Simply paste the following prompt into Claude Code, OpenClaw, or any AI coding agent:
+如果你在 macOS 或 Linux 上，虚拟环境激活命令通常是：
 
 ```bash
-帮我配置并安装：npm install -g @canghe_ai/wechat-cli
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
+pip install -e .
 ```
 
-For example, in Claude Code:
+## 第一步：初始化微信数据
 
-![install-claude-code-1](image/install-claude-code-1.png)
+确保微信正在运行，然后执行：
 
-Note: Make sure you have Node.js installed first. You can ask your agent to set it up if needed.
-
----
-
-## 🚀 Quick Start
-
-### Step 1 — Initialize
-
-Make sure WeChat is running, then:
-
-```bash
-# macOS/Linux: may need sudo for memory scanning
-sudo wechat-cli init
-
-# Windows: run in a terminal with sufficient privileges
+```powershell
 wechat-cli init
 ```
 
-This auto-detects your WeChat data directory, extracts encryption keys, and saves config to `~/.wechat-cli/`.
+这一步会自动寻找本机微信数据目录，并尝试提取解密所需的信息。配置会保存在你的本机用户目录下，不会进入本项目仓库。
 
-![init-claude-code-1](image/init-claude-code-1.png)
+如果你有多个微信账号，本工具可能会让你选择当前要分析的账号。
 
-On macOS, you'll need to run the `sudo` command and enter your password:
+macOS 用户可能需要给终端开启「完全磁盘访问权限」，否则无法读取微信数据目录。
 
-![init-claude-code-2](image/init-claude-code-2.png)
+## 第二步：准备背景图
 
-If you have multiple WeChat accounts logged in locally, you'll be prompted to choose one. Select the account you're currently using (the default is the first one):
+总结页默认是 11 页，对应 11 张背景图：
 
-![init-claude-code-3](image/init-claude-code-3.png)
+```text
+summary/pictures/1.png
+summary/pictures/2.png
+...
+summary/pictures/11.png
+```
 
-If you're unsure which WeChat account is currently active, navigate to the data folder and sort by modification date to find out:
+如果你没有自己的背景图，也可以先放任意 11 张图片测试。建议图片比例接近手机竖屏，例如 `750 x 1206`。
 
-![init-claude-code-4](image/init-claude-code-4.png)
+如果你不想上传背景图，可以把 `summary/pictures/` 留空，让使用者自己准备图片。
 
-#### macOS: Grant Full Disk Access to Terminal
+## 第三步：生成总结页面
 
-Before running `init`, make sure your terminal app has **Full Disk Access**:
+在项目根目录运行：
 
-1. Open **System Settings → Privacy & Security → Full Disk Access**
-2. Add your terminal app (e.g. Terminal, iTerm2, or the terminal in your IDE)
-3. Restart the terminal after enabling
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+python scripts\build_summary_page.py
+```
 
-Without this permission, the tool cannot access WeChat's data directory and key extraction will fail.
-
-#### macOS: `task_for_pid failed` Error
-
-On some macOS systems, `init` may fail with `task_for_pid failed` even when running with `sudo`. This is due to macOS security restrictions on process memory access.
-
-**WeChat CLI will automatically attempt to fix this** by re-signing WeChat with the required entitlement (original entitlements are preserved). Just follow the on-screen instructions:
-
-1. The tool will re-sign WeChat automatically
-2. Quit WeChat completely (not just minimize)
-3. Reopen WeChat and log in
-4. Run `sudo wechat-cli init` again
-
-If auto re-signing fails, you can do it manually:
+macOS / Linux：
 
 ```bash
-# Quit WeChat first, then:
-sudo codesign --force --sign - --entitlements /dev/stdin /Applications/WeChat.app <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>com.apple.security.get-task-allow</key>
-    <true/>
-</dict>
-</plist>
-EOF
+PYTHONIOENCODING=utf-8 python scripts/build_summary_page.py
 ```
 
-> **Heads up:** Re-signing WeChat is safe and will **not** cause account issues or bans. However, it may affect WeChat's auto-update mechanism. If you notice any feature not working properly, or want to update WeChat to the latest version, simply re-download and reinstall WeChat from the [official website](https://mac.weixin.qq.com/) — no need to re-run `init`, your existing config and keys will continue to work.
+运行成功后会生成：
 
-### Step 2 — Use It
+```text
+summary/index.html
+summary/summary_filled.txt
+summary/summary_data.json
+```
+
+其中：
+
+- `summary/index.html` 是最终页面
+- `summary/summary_filled.txt` 是填好真实数据后的文案
+- `summary/summary_data.json` 是提取出来的统计字段
+
+打开 `summary/index.html` 就可以查看页面。
+
+注意：`summary/index.html` 是一个本地网页文件，不是在终端里显示的网站。你需要用浏览器打开它。
+
+Windows 可以运行：
+
+```powershell
+start summary\index.html
+```
+
+macOS 可以运行：
 
 ```bash
-wechat-cli sessions                        # Recent chats
-wechat-cli history "Alice" --limit 20      # Chat messages
-wechat-cli search "deadline" --chat "Team" # Search messages
+open summary/index.html
 ```
 
----
-
-## 🤖 Using with AI Agents
-
-WeChat CLI is designed as an AI agent tool. All commands output structured JSON by default.
-
-### Claude Code
-
-Add to your project's `CLAUDE.md`:
-
-```markdown
-## WeChat CLI
-
-You can use `wechat-cli` to query my local WeChat data.
-
-Common commands:
-- `wechat-cli sessions --limit 10` — list recent chats
-- `wechat-cli history "NAME" --limit 20 --format text` — read chat history
-- `wechat-cli search "KEYWORD" --chat "CHAT_NAME"` — search messages
-- `wechat-cli contacts --query "NAME"` — search contacts
-- `wechat-cli unread` — show unread sessions
-- `wechat-cli new-messages` — get messages since last check
-- `wechat-cli members "GROUP"` — list group members
-- `wechat-cli stats "CHAT" --format text` — chat statistics
-```
-
-Then in conversation you can ask Claude things like:
-- "Check my unread WeChat messages"
-- "Search for messages about the project deadline in the Team group"
-- "Who sent the most messages in the AI group this week?"
-
-### OpenClaw / MCP Integration
-
-WeChat CLI works with any AI tool that can execute shell commands:
+Linux 可以运行：
 
 ```bash
-# Get recent conversations
-wechat-cli sessions --limit 5
-
-# Read specific chat
-wechat-cli history "Alice" --limit 30 --format text
-
-# Search with filters
-wechat-cli search "report" --type file --limit 10
-
-# Monitor for new messages (great for cron/automation)
-wechat-cli new-messages --format text
+xdg-open summary/index.html
 ```
 
----
+也可以直接在文件管理器里进入 `summary/` 文件夹，双击 `index.html`。
 
-## 📖 Command Reference
+## 常见问题
 
-### `sessions` — Recent Chats
+### 1. 为什么没有数据？
 
-```bash
-wechat-cli sessions                        # Last 20 sessions
-wechat-cli sessions --limit 10             # Last 10
-wechat-cli sessions --format text          # Human-readable
+先确认：
+
+- 微信正在运行
+- 已经执行过 `wechat-cli init`
+- 当前电脑确实有微信聊天记录
+- 终端有权限访问微信数据目录
+
+可以先运行：
+
+```powershell
+wechat-cli sessions
 ```
 
-### `history` — Chat Messages
+如果这个命令也没有结果，说明底层微信数据还没有配置好。
 
-```bash
-wechat-cli history "Alice"                 # Last 50 messages
-wechat-cli history "Alice" --limit 100 --offset 50
-wechat-cli history "Team" --start-time "2026-04-01" --end-time "2026-04-03"
-wechat-cli history "Alice" --type link     # Only links
-wechat-cli history "Alice" --format text
+### 2. 为什么朋友圈数量不完整？
+
+朋友圈数据来自微信本机缓存。微信客户端没有加载过的历史朋友圈，本机数据库里可能没有完整记录。
+
+简单说：这个工具只能统计你电脑上已经缓存到的数据，不能凭空拿到云端所有历史朋友圈。
+
+### 3. 可以改统计时间范围吗？
+
+可以。当前时间范围定义在 `scripts/check_summary_feasibility.py`：
+
+```python
+START = datetime(2026, 1, 1)
+END_EXCLUSIVE = datetime(2026, 4, 29)
 ```
 
-**Options:** `--limit`, `--offset`, `--start-time`, `--end-time`, `--type`, `--format`
+例如想统计 2025 全年，可以改成：
 
-### `search` — Search Messages
-
-```bash
-wechat-cli search "hello"                  # Global search
-wechat-cli search "hello" --chat "Alice"   # In specific chat
-wechat-cli search "meeting" --chat "TeamA" --chat "TeamB"  # Multiple chats
-wechat-cli search "report" --type file     # Only files
+```python
+START = datetime(2025, 1, 1)
+END_EXCLUSIVE = datetime(2026, 1, 1)
 ```
 
-**Options:** `--chat` (repeatable), `--start-time`, `--end-time`, `--limit`, `--offset`, `--type`, `--format`
+改完后重新运行：
 
-### `contacts` — Contact Search & Details
-
-```bash
-wechat-cli contacts --query "Li"           # Search contacts
-wechat-cli contacts --detail "Alice"       # Contact details
-wechat-cli contacts --detail "wxid_xxx"    # By WeChat ID
+```powershell
+python scripts\build_summary_page.py
 ```
 
-Returns: nickname, remark, WeChat ID, bio, avatar URL, account type.
+### 4. 可以改文案吗？
 
-### `members` — Group Members
+可以。直接编辑：
 
-```bash
-wechat-cli members "Team Group"            # All members (JSON)
-wechat-cli members "Team Group" --format text
+```text
+summary/summary.txt
 ```
 
-### `stats` — Chat Statistics
+里面的 `【字段名】` 会在生成时自动替换成真实数据。
 
-```bash
-wechat-cli stats "Team Group"
-wechat-cli stats "Alice" --start-time "2026-04-01" --end-time "2026-04-03"
-wechat-cli stats "Team Group" --format text
+例如：
+
+```text
+你一共发出了【本人总消息数】条消息。
 ```
 
-Returns: total messages, type breakdown, top 10 senders, 24-hour activity distribution.
+会生成类似：
 
-### `export` — Export Conversations
-
-```bash
-wechat-cli export "Alice" --format markdown              # To stdout
-wechat-cli export "Alice" --format txt --output chat.txt  # To file
-wechat-cli export "Team" --start-time "2026-04-01" --limit 1000
+```text
+你一共发出了18,139条消息。
 ```
 
-**Options:** `--format markdown|txt`, `--output`, `--start-time`, `--end-time`, `--limit`
+如果新增了一个不存在的字段，生成结果里会保留原占位符。你需要在 `scripts/build_summary_page.py` 里补上对应字段。
 
-### `favorites` — WeChat Bookmarks
+### 5. 页面不好看怎么办？
 
-```bash
-wechat-cli favorites                       # Recent bookmarks
-wechat-cli favorites --type article        # Articles only
-wechat-cli favorites --query "machine learning"  # Search
+主要改这几个文件：
+
+```text
+summary/styles.css
+summary/app.js
+summary/pictures/
 ```
 
-**Types:** text, image, article, card, video
+其中 `styles.css` 控制字体、颜色、布局；`app.js` 控制翻页；`pictures/` 是背景图。
 
-### `unread` — Unread Sessions
+## 隐私说明
 
-```bash
-wechat-cli unread                          # All unread sessions
-wechat-cli unread --limit 10 --format text
+请不要上传这些生成文件：
+
+```text
+summary/index.html
+summary/summary_filled.txt
+summary/summary_data.json
+analysis/
+contacts.json
+sessions.json
+week_group_*.json
+epilepsy_*.json
+*.db
 ```
 
-### `new-messages` — Incremental New Messages
+这些文件可能包含真实联系人、群名、聊天内容、朋友圈内容和统计结果。
 
-```bash
-wechat-cli new-messages                    # First: return unread + save state
-wechat-cli new-messages                    # Subsequent: only new since last call
+本仓库的 `.gitignore` 已经默认忽略这些文件。正常使用：
+
+```powershell
+git add .
 ```
 
-State saved at `~/.wechat-cli/last_check.json`. Delete to reset.
+不会把它们加进去。不要使用 `git add -f` 强行添加这些文件。
 
----
+## 推荐上传到 GitHub 的文件
 
-## 🔍 Message Type Filter
+建议上传：
 
-The `--type` option (on `history` and `search`):
+```text
+scripts/build_summary_page.py
+scripts/check_summary_feasibility.py
+summary/summary.txt
+summary/styles.css
+summary/app.js
+README.md
+LICENSE
+```
 
-| Value | Description |
-|-------|-------------|
-| `text` | Text messages |
-| `image` | Images |
-| `voice` | Voice messages |
-| `video` | Videos |
-| `sticker` | Stickers/emojis |
-| `location` | Location shares |
-| `link` | Links and app messages |
-| `file` | File attachments |
-| `call` | Voice/video calls |
-| `system` | System messages |
+如果背景图没有隐私和版权问题，也可以上传：
 
----
+```text
+summary/pictures/
+```
 
-## 💻 System Requirements
+不建议上传任何已经生成好的个人总结页面。
 
-- **macOS** ≥ 26.3.1
-- **WeChat for Mac** ≤ 4.1.8.100
+## 项目来源与致谢
 
-> Older macOS versions or newer WeChat versions may not be compatible.
+本项目基于 [huohuoer/wechat-cli](https://github.com/huohuoer/wechat-cli) 开发，原项目使用 Apache License 2.0。
 
----
+本仓库新增的主要内容是微信总结页面生成逻辑，包括：
 
-## 🖥️ Platform Support
+- `summary/summary.txt`
+- `summary/styles.css`
+- `summary/app.js`
+- `scripts/build_summary_page.py`
+- `scripts/check_summary_feasibility.py`
 
-| Platform | Status | Notes |
-|----------|--------|-------|
-| macOS (Apple Silicon) | ✅ Supported | Bundled arm64 binary |
-| macOS (Intel) | ✅ Supported | x86_64 binary needed |
-| Windows | ✅ Supported | Reads Weixin.exe process memory |
-| Linux | ✅ Supported | Reads /proc/pid/mem, requires root |
+感谢原项目提供本地微信数据读取和解密能力。
 
----
+## 许可证
 
-## 🔧 How It Works
-
-WeChat stores chat data in SQLCipher-encrypted SQLite databases locally. WeChat CLI:
-
-1. **Extracts keys** — scans WeChat process memory for encryption keys (`init`)
-2. **Decrypts on-the-fly** — transparent page-level AES-256-CBC decryption with caching
-3. **Queries locally** — all data stays on your machine, no network access
-
----
-
-## 📄 License
-
-[Apache License 2.0](LICENSE)
-
----
-
-## ⚖️ Disclaimer
-
-This project is a local data query tool for personal use only. Please note:
-
-- **Read-only** — this tool only reads locally stored data, it does not send, modify, or delete any messages
-- **No cloud transmission** — all data stays on your local machine, nothing is uploaded to any server
-- **No WeChat ecosystem disruption** — this tool does not interfere with WeChat's normal operation, does not automate any actions, and does not violate WeChat's Terms of Service
-- **Use at your own risk** — this project is for personal learning and research purposes only. Users are responsible for ensuring compliance with local laws and regulations
-
----
-
-## 🙏 Acknowledgements
-
-This project is built on top of [wechat-decrypt](https://github.com/ylytdeng/wechat-decrypt), which provides the core WeChat database decryption and data parsing capabilities.
-
----
-
-## ⭐ Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=freestylefly/wechat-cli&type=Date)](https://star-history.com/#freestylefly/wechat-cli&Date)
+本项目沿用 Apache License 2.0。详见 `LICENSE`。
